@@ -1,0 +1,354 @@
+=> How does React works?
+	- React is a javascript library which it uses to manage the state of the application, it doesn't knows anything about the dom which is rendered.
+	- It is React DOM which actually renders the application.
+	- All the computation of managing the states, context etc from component to component is managed by React but it is React DOM which renders what we 
+	see in the browser based on the computation result given by React to React DOM.
+	- React does this by a concept of Virtual DOM, basically it creates a virtual object of component tree and once React computes state changes etc it
+	creates a new virtual dom entry and calculates the differences between current virtual dom and previous virtual dom and sends the differences to ReactDOM.
+	- After receiving these differences ReactDOM directly changes the specific DOM elements without traversing the DOM Tree.
+	- Virtual Dom Diffing
+		React evaluates/re-evaluates state, props or context changes  --> The differences before evaluation and after evaluation is sent to React Dom
+		--> React DOM recieves the snapshot of changes and update particular DOM where actual changes are need to be rendered without traversing entire DOM tree
+		
+=> React Portals
+	- Portals provide a first-class way to render children into a DOM node that exists outside the DOM hierarchy of the parent component.
+	- ReactDOM.createPortal(child, container)
+	- The first argument (child) is any renderable React child, such as an element, string, or fragment. The second argument (container) is a DOM element.
+	- Normally, when you return an element from a component’s render method, it’s mounted into the DOM as a child of the nearest parent node
+	- However, sometimes it’s useful to insert a child into a different location in the DOM
+	- https://reactjs.org/docs/portals.html
+
+=> useRef()
+	- It is used to get a reference of an element in react
+	- use case - suppose you want some readonly data to be sent to other components, we need not manage its state, simply we can use this hook
+	and get value od those fields through its reference.
+	- Ex : const nameInputRef = useRef();
+			nameInputRef.current.value
+	- It is not advised to use useRef for manipulating dom elements
+	
+=> useEffect()
+	- In an application there are certain piece of code which needs to be executed only on load or if some of components value/state changes.
+	- To manage this behaviour, if we directly add those conditions in a component and for every change if component rerenders we might end up
+	executing infinite loop.
+	- useEffect hook help us to execute such piece of code wherein it will be executed when components render for the first time and re-executed
+	when the dependencies we added for the value/state we are looking is changed
+	- Ex - useEffect(()=> {} , []);  executed only when component renders for the first time since dependencies are empty
+			useEffect(()=>{} , [dependency1, dependency2]);  executed when components renders first time or when any of the given dependencies changed
+			
+
+	=> What to add & Not to add as Dependencies
+		In the previous lecture, we explored useEffect() dependencies.
+		
+		You learned, that you should add "everything" you use in the effect function as a dependency - i.e. all state variables and functions you use in there.
+		
+		That is correct, but there are a few exceptions you should be aware of:
+		
+		-You DON'T need to add state updating functions (as we did in the last lecture with setFormIsValid): React guarantees that those functions never change, 
+			hence you don't need to add them as dependencies (you could though)
+			
+		-You also DON'T need to add "built-in" APIs or functions like fetch(), localStorage etc (functions and features built-into the browser and hence 
+			available globally): These browser APIs / global functions are not related to the React component render cycle and they also never change
+		
+		-You also DON'T need to add variables or functions you might've defined OUTSIDE of your components (e.g. if you create a new helper function in a 
+		separate file): Such functions or variables also are not created inside of a component function and hence changing them won't affect your components (components won't be re-evaluated if such variables or functions change and vice-versa)
+		
+		-So long story short: You must add all "things" you use in your effect function if those "things" could change because your component (or some parent 
+		component) re-rendered. That's why variables or state defined in component functions, props or functions defined in component functions have to be added 
+		as dependencies!
+		
+		Here's a made-up dummy example to further clarify the above-mentioned scenarios:
+		
+		import { useEffect, useState } from 'react';
+		
+		let myTimer;
+		
+		const MyComponent = (props) => {
+		const [timerIsActive, setTimerIsActive] = useState(false);
+		
+		const { timerDuration } = props; // using destructuring to pull out specific props values
+		
+		useEffect(() => {
+			if (!timerIsActive) {
+			setTimerIsActive(true);
+			myTimer = setTimeout(() => {
+				setTimerIsActive(false);
+			}, timerDuration);
+			}
+		}, [timerIsActive, timerDuration]);
+		};
+		In this example:
+		
+		-timerIsActive is added as a dependency because it's component state that may change when the component changes (e.g. because the state was updated)
+		
+		-timerDuration is added as a dependency because it's a prop value of that component - so it may change if a parent component changes that value 
+		(causing this MyComponent component to re-render as well)
+		
+		-setTimerIsActive is NOT added as a dependency because it's that exception: State updating functions could be added but don't have to be added since 
+		React guarantees that the functions themselves never change
+		
+		-myTimer is NOT added as a dependency because it's not a component-internal variable (i.e. not some state or a prop value) - it's defined outside of the
+		component and changing it (no matter where) wouldn't cause the component to be re-evaluated
+		
+		-setTimeout is NOT added as a dependency because it's a built-in API (built-into the browser) - it's independent from React and your components, 
+		it doesn't change
+		
+		
+		=> useEffect cleanup function
+		- suppose in dependencies we added something which changes on every key stroke, and if we have some heavy performance code which executes on 
+			every key stroke will cost you performance issue.
+			
+		- In such cases we can use debouncing, but in react useEffect we can use cleanup function which is returned in useEffect
+		-	 useEffect(() => {
+				setFormIsValid(
+				enteredEmail.includes("@") && enteredPassword.trim().length > 6
+				);
+			}, [enteredEmail, enteredPassword]);
+		- In above example we are updating state of formvalidity on every key stroke
+		- to handle this we can do following cleanup code - 
+			
+			useEffect(() => {
+				const validate = setTimeout(() => {
+				console.log('Hello');
+				setFormIsValid(
+					enteredEmail.includes("@") && enteredPassword.trim().length > 6
+				);
+				}, 500);
+			
+				return()=>{
+				console.log('CLEANUP');
+				clearTimeout(validate);
+				}
+			}, [enteredEmail, enteredPassword]);
+			
+			
+
+=> useReducer()
+
+	If you've used useState() hook to manage non-trivial state like a list of items, where you need to add, update and remove items in the state, you might 
+	have noticed that the state management logic takes a good part of the component body.
+
+	That's a problem because the React component in nature should contain the logic that calculates the output. But the state management logic is a different 
+	concern that should be managed in a separate place. Otherwise, you get a mix of state management and rendering logic in one place, and that's difficult to 
+	read, maintain, and test!
+	
+	To help you separate the concerns (rendering and state management) React provides the hook useReducer(). The hook does so by extracting the state management
+	out of the component.
+	
+	- link - https://dmitripavlutin.com/react-usereducer/
+	
+	- Consider simple example of login form
+	
+		const emailReducer = (state, action) => {
+			if (action.type === "EMAIL_INPUT") {
+				return { value: action.val, isValid: action.val.includes("@") };
+			}
+			if (action.type === "CHECK_EMAIL_PATTERN") {
+				return { value: state.value, isValid: state.value.includes("@") };
+			}
+			return { value: "", isValid: false };
+		};
+		
+		const [emailState, dispatchEmail] = useReducer(emailReducer, {
+			value: "",
+			isValid: null,
+		});
+		
+		const emailChangeHandler = (event) => {
+			dispatchEmail({ type: "EMAIL_INPUT", val: event.target.value });
+		};
+		
+		const validateEmailHandler = () => {
+			dispatchEmail({ type: "CHECK_EMAIL_PATTERN" });
+		};
+		
+	- Explaination:
+		- An event handler on change of an event call a dispatch function(dispatchEmail) with action object ({ type: "EMAIL_INPUT", val: event.target.value })
+		- Then React redirects the action object and the current state value to the reducer function(emailReducer)
+		- The reducer function uses the action object and performs a state update, returning the new state.
+		- React then checks whether the new state differs from the previous one. If the state has been updated, React re-renders the component and useReducer() 
+		  returns the new state value
+		  
+		  
+=> When to use useReducer() over useState()
+
+	- When using useState() becomes curmbersome and you are getting lots of bugs/unintended behaviour
+	
+	useState()
+		- main state management tool
+		- independent peice of state/data - not bigger objects or array
+		- its great if state management is easy and dont rely on other states to update
+		
+	usereducer()
+		- great if you need more power on state management logic
+		- should be consider when you have related piece of data/state - like arrays or objects
+		- can be helpfull if you have more complex state updates
+		
+		
+=> React Context API
+	- Context provides a way to pass data through the component tree without having to pass props down manually at every level.
+	- This is the alternative to "prop drilling" or moving props from grandparent to child to parent, and so on. 
+	- Context is also touted as an easier, lighter approach to state management
+	- Context API is a (kind of) new feature added in version 16.3 of React that allows one to share state across the entire app (or part of it) 
+	lightly and with ease.
+	
+	- How it works?
+		- React.createContext() is all you need. It returns a consumer and a provider. 
+		- Provider is a component that as it's names suggests provides the state to its children. 
+		- It will hold the "store" and be the parent of all the components that might need that store. 
+		- Consumer as it so happens is a component that consumes and uses the state.
+		
+	- More on - https://www.udemy.com/course/react-the-complete-guide-incl-redux/learn/lecture/25599262#content
+	
+	- Limitation => React context are not optimized for high frequency changes
+	
+	
+=> Rules of Hooks
+	- only call React hooks in React Functions
+		- React Component function
+		- custom hook
+		
+		Example - 
+			const emailReducer = (state, action) => {
+				const abc = useState();
+				if (action.type === "EMAIL_INPUT") {
+					return { value: action.val, isValid: action.val.includes("@") };
+				}
+				if (action.type === "CHECK_EMAIL_PATTERN") {
+					return { value: state.value, isValid: state.value.includes("@") };
+				}
+				return { value: "", isValid: false };
+			};
+			
+			Error : React Hook "useState" is called in function "emailReducer" that is neither a React function component nor a custom React Hook function. 
+					React component names must start with an uppercase letter. React Hook names must start with the word "use"
+		
+		
+	- Dont call react hooks in nested functions
+		
+		Example: 
+				useEffect(() => {
+					const nested =useState();
+					const validate = setTimeout(() => {
+					console.log("Hello");
+					setFormIsValid(isEmailVaild && isPasswordValid);
+					}, 500);
+					return () => {
+					console.log("CLEANUP");
+					clearTimeout(validate);
+					};
+				}, [isEmailVaild, isPasswordValid]);
+				
+			Error:   React Hook "useState" cannot be called inside a callback. 
+					 React Hooks must be called in a React function component or a custom React Hook function
+					 \
+					 
+	- Don't call them inside block statements - like if else, etc
+	- Always add everything you refer to in useState as a dependency
+	
+
+=> React Memo
+	- Consider a scenario where there is a parent child relationship between two components. Child components receives some props and based on that it
+	does some action in its component.
+	- As we know for every render or re-render cycle if parent component renders then child component will also render again.
+	- But what if the value sent as a props never changes or very rarely changes in parent component. In this scenario also even though props are not
+	changing on every render cycle, but child components get rendered again.
+	- To avoid such re-render and optimize performance of application we can use React.memo in child component.
+	- Avoid such re-rendering comes with a few other cost like on every re-render React Memo will compare the previous props and current props and thus
+	based on this comparison it decides whether to render its component or not.
+	- They can be used when we know that React wont update the props and their are certain child components of its own which will get render in case if it
+	gets render so this can improve performance.
+		Grandparen - Parent(memo component) - Multiple child
+	- There are one gotcha in React.Memo
+		> React.Memo comparison of props will work for primitive values sent as a props.
+		> If function, array or object is passed then even though two objects are same every time it will return false and component will re-render
+			false === false (true) component wont render
+			[1,2,3] === [1,2,3] (false) component renders
+
+=> useCallback
+	- In react memo the equality of same objects/array/function differed on every re-render because on revery new render cycle those functions were created
+	in a new memory space.
+	- In this scenario we can use useCallback hook wherein we can register our object/function in a seperate memory space(cache) in react and on every render 
+	cycle those functions/objects will refer to same memory location hence the equality check will return true and help us to improve performance to use it
+	in combination of React.memo to stop unnecessary re-rendering
+	- only those functions can be added whose paraments wont change every time.
+	- if your function under callback function is dependend on variables outside of its scope, we need to pass it on as a dependency or else any new
+	updates on that variable will not be available inside our callback function since the value which were stored while that function was stored in a 
+	seperate memory will always point to that old value which is cached.
+	
+	Example -
+		export default function ProductPage({ productId, referrer, theme }) {
+		const handleSubmit = useCallback((orderDetails) => {
+				post('/product/' + productId + '/buy', {
+				referrer,
+				orderDetails,
+				}
+			);
+		}, [productId, referrer]);
+		
+=> useMemo
+	- Similar to useCallback, it cache the value so that we dnt need to do the same computation again and again.
+	- 2 common use cases of useMemo:
+		1. When you want to make a slow function wrap inside useMemo so that doesn't re-compute every single time you render your component and it only computed
+		when you acually need the value from that function since the inputs actually change
+		2. Whenever you want to make sure the reference of an object or an array is exactly the same as it was the last time you rendered if none of the internal 
+		workings changed, you're gonna want to useMemo here to make sure that you only update the reference of that object whenever the actual contents of the 
+		object change instead of updating every single time you render
+		
+	- How is it difference from useCallback
+		useMemo: Returns and stores the calculated value of a function in a variable
+		useCallBack: Returns and stores the actual function itself in a variable
+		
+=> Class based components: an alternative to functional components
+	
+	- Functional components(default & modern approach) - regular javascript method which returns renderable result.
+		
+			function Product(props){
+				return <h2>Product Functional component.</h2>
+			}
+	- Class based components (prior to React 16.8) - JS classes where render() method determines the output to be rendered.
+	
+			class Product extends Component{
+				
+				render(){
+					return <h2>Product Class Based Component.</h2>
+				}
+			}
+			
+	- Traditionally before React 16.8 you have to use class based components to manage states.
+	- You cannot control states or side effects in functional component prior to 16.8 now it is feasible becuase of React hooks.
+	- We cannot use React hooks in class based components.
+	- we can create a mix of class based components and functional components. i.e. we can have a parent component as fC and child component as CC.
+
+
+=> Class based -  Component Life Cycle Methods
+	
+	* componentDidMount() - called once component was mounted (evaluated and rendered)  
+		
+		Equivalent Functional component hook:	useEffect((){
+													....
+												},[])
+												
+		- component did mount will only run once when the component was rendered for the first time.
+		
+	* componentDidUpdate() -  called once component was updated (evaluated and rendered)
+		
+		Equivalent Functional component hook:	useEffect((){
+													....
+												},[someValues])
+	* componentWillUnmount() - called before component is unmounted (removed from DOM)
+	
+		Equivalent Functional component hook:
+		
+			useEffect((){
+				....
+				return ()=>{
+					....
+				}
+			},[])
+
+	* componentDidCatch() - 
+		- component having this method is called as Error Boundry Component.
+		- We can use this component as an alternative page to show some error within an application.
+		- will be triggered if any child components triggers an error.
+		- there is no alternative for this in functional components.
+	

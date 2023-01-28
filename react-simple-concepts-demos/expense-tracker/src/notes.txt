@@ -1,0 +1,11 @@
+
+- React is all about components
+
+
+Controlled components
+- In a component where value is displayed via props from parent and value is sent back
+to parent and the given component doesnt do anything on it other then receiving props and sending events,
+those components are known as controlled components.
+
+Stateless/presentational vs Statefull / dumb vs smart
+- component which doesnt have any internal state is stateless/presentational/dumb component
